@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "sqlite"
+    url      = env("DATABASE_URL")
+}
+
+model Users {
+    id               Int                @id @default(autoincrement())
+    email            String?            @unique
+    username         String             @unique
+    password         String
+    role             String             @default("root") // root user
+    created_at       DateTime           @default(now())
+    updated_at       DateTime           @default(now()) @updatedAt
+    Groups           Groups[]
+    GroupUsers       GroupUsers[]
+    GroupScopesUsers GroupScopesUsers[]
+    Packages         Packages[]
+    PackagesAccess   PackagesAccess[]
+
+    @@map("users")
+}
+
+model Groups {
+    id               Int                @id @default(autoincrement())
+    name             String
+    owner_id         Int
+    disabled         Boolean            @default(false)
+    Users            Users?             @relation(fields: [owner_id], references: [id])
+    created_at       DateTime           @default(now())
+    updated_at       DateTime           @default(now()) @updatedAt
+    GroupUsers       GroupUsers[]
+    GroupScopes      GroupScopes[]
+    GroupScopesUsers GroupScopesUsers[]
+    Packages         Packages[]
+    PackagesAccess   PackagesAccess[]
+
+    @@map("groups")
+}
+
+model GroupUsers {
+    id       Int     @id @default(autoincrement())
+    user_id  Int
+    group_id Int
+    role     String  @default("owner")
+    Users    Users?  @relation(fields: [user_id], references: [id])
+    Groups   Groups? @relation(fields: [group_id], references: [id])
+
+    @@unique([user_id, group_id])
+    @@map("group_users")
+}
+
+model GroupScopes {
+    id       Int     @id @default(autoincrement())
+    scope    String
+    group_id Int
+    Groups   Groups? @relation(fields: [group_id], references: [id])
+
+    @@map("group_scopes")
+}
+
+model GroupScopesUsers {
+    id        Int     @id @default(autoincrement())
+    scope     String
+    group_id  Int
+    user_id   Int
+    role      String  @default("root") // root user bot
+    read      Boolean @default(true)
+    publish   Boolean @default(false)
+    unpublish Boolean @default(false)
+    Groups    Groups? @relation(fields: [group_id], references: [id])
+    Users     Users?  @relation(fields: [user_id], references: [id])
+
+    @@map("group_scopes_users")
+}
+
+model Packages {
+    id       Int     @id @default(autoincrement())
+    name     String
+    scope    String?
+    group_id Int?
+    owner_id Int?
+    access   String  @default("$all") //'$all', '$anonymous', '@all', '@anonymous', 'all', 'undefined', 'anonymous'; all anonymous group self custom 
+    Groups   Groups? @relation(fields: [group_id], references: [id])
+    Users    Users?  @relation(fields: [owner_id], references: [id])
+
+    @@unique([name, scope])
+    @@map("packages")
+}
+
+model PackagesAccess {
+    id         Int     @id @default(autoincrement())
+    package_id Int
+    group_id   Int?
+    user_id    Int
+    Groups     Groups? @relation(fields: [group_id], references: [id])
+    Users      Users?  @relation(fields: [user_id], references: [id])
+
+    @@unique([package_id, group_id])
+    @@unique([package_id, user_id])
+    @@map("packages_access")
+}
